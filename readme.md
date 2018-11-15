@@ -1,6 +1,6 @@
 # Chat application via `TCP`
 
-<img src="https://d3njjcbhbojbot.cloudfront.net/api/utilities/v1/imageproxy/https://coursera-course-photos.s3.amazonaws.com/b4/46d9e0795611e7944fcd8c9517c543/tcpIP.jpg?auto=format%2Ccompress&dpr=1" alt="drawing" style="width:200px;"/>
+![](https://d3njjcbhbojbot.cloudfront.net/api/utilities/v1/imageproxy/https://coursera-course-photos.s3.amazonaws.com/b4/46d9e0795611e7944fcd8c9517c543/tcpIP.jpg?auto=format%2Ccompress&dpr=1 | width=100)
 
 ---
 ## Install

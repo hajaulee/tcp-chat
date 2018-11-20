@@ -1,9 +1,6 @@
 #include <gtk/gtk.h>
 #include "handle-event.c"
 
-
-
-
 extern GtkWidget *window;
 extern GtkWidget *frame;
 extern GtkWidget *chatArea;
@@ -179,11 +176,6 @@ GtkWidget * initPublicChannelBox(int x, int y){
 }
 
 
-
-// void onLogoutButtonClicked(GtkWidget * widget, gpointer data){
-// 	destroySomething(NULL, window);
-// 	showLoginDialog();
-// }
 void delFromUserBox(gpointer child, gpointer user_data){
 	gtk_container_remove(userListBox, (GtkWidget*)child);
 }

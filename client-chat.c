@@ -1,9 +1,9 @@
 #include <gtk/gtk.h>
 #include <string.h>
 #include <stdio.h>
-#include "string-constant.c"
+#include "string-constant.h"
 #include "gui-design.c"
-
+#include "client.c"
 
 
 
@@ -21,7 +21,7 @@ int main(int argc, char const *argv[])
 {
 	// Khoi tao GTK
 	gtk_init(&argc, &argv);
-	
+	createClient();
 
 	showLoginDialog();
 

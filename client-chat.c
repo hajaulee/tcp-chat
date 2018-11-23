@@ -11,8 +11,8 @@ GtkWidget *chatArea;
 GtkWidget *messageInput;
 
 char *you = "abc";
-char *onlineUsers[] = {"hajau", "tuanx", "agihi", "sep", "baclaocong", "hotboyxx", "occho"};
-int onlineUserCount = 7;
+char onlineUsers[USER_NUM_MAX][32];
+int onlineUserCount = 0;
 
 int main(int argc, char const *argv[])
 {

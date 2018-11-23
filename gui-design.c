@@ -7,7 +7,7 @@ extern GtkWidget *frame;
 extern GtkWidget *chatArea;
 extern GtkWidget *messageInput;
 extern char *you;
-extern char *onlineUsers[];
+char onlineUsers[USER_NUM_MAX][32];
 extern int onlineUserCount;
 GtkWidget *userListBox;
 GtkWidget *loginDialog;
@@ -85,7 +85,7 @@ void initLoginDialog()
 	data_array[1] = inputPassword;
 	data_array[2] = loginDialog;
 	g_signal_connect(loginButton, "clicked", G_CALLBACK(onLoginButtonClicked), data_array);
-	g_signal_connect(cancelButton, "clicked", G_CALLBACK(destroySomething), loginDialog);
+	g_signal_connect(cancelButton, "clicked", G_CALLBACK(onExit), loginDialog);
 	g_signal_connect(inputUsername, "activate", G_CALLBACK(onLoginButtonClicked), data_array);
 	g_signal_connect(inputPassword, "activate", G_CALLBACK(onLoginButtonClicked), data_array);
 	// gtk_widget_show_all(loginDialog);

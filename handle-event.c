@@ -13,6 +13,7 @@ extern GtkWidget *loginDialog;
 extern GtkWidget *inputUsername;
 extern GtkWidget *inputPassword;
 extern 	GtkWidget *yournameLabel;
+extern char * you;
 char *username;
 char *password;
 
@@ -34,7 +35,11 @@ void onLoginSuccess(char *message)
 	gtk_entry_set_text(inputPassword, BLANK);
 	gtk_widget_hide(loginDialog);
 	showMainWindow();
+	you = username;
 	gtk_label_set_text(yournameLabel, username);
+	clearBuf(inBuf);
+	sprintf(inBuf, "%c", GET_LIST_USER_ACTION);
+	sendRequest();
 
 }
 void onSentUsername()
@@ -69,6 +74,9 @@ void onChannelButtonClicked(GtkWidget *widget, gpointer data)
 	showMessage(window, GTK_MESSAGE_INFO, "haha", channel);
 }
 
+void onExit(GtkWidget *widget, gpointer data){
+	exit(0);
+}
 void onSendButtonClicked(GtkWidget *widget, gpointer data)
 {
 	char *newlist[] = {"admin", "user"};

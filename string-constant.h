@@ -31,7 +31,7 @@
 #define PRIVATE_MESSAGE_ACTION 'M'
 #define CHANNEL_MESSAGE_ACTION 'C'
 #define LOGOUT_ACTION 'O'
-
+#define SEPARATOR ','
 #define SUCCESS "success"
 #define FAILED "failed"
 #define OK "OK"

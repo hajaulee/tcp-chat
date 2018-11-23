@@ -18,10 +18,9 @@
 int client_sock_fd;
 char *inBuf;
 char outBuf[MAXLINE];
-
-//the thread function
-void *receive_handler(void *);
-void fff(char *);
+extern char onlineUsers[USER_NUM_MAX][32];
+extern int onlineUserCount;
+extern void updateUserList(char *n[], int);
 
 void clearBuf(char *buff)
 {
@@ -29,14 +28,59 @@ void clearBuf(char *buff)
 }
 int sendRequest()
 {
-    printf("Prepare:%s\n", inBuf);
+    printf("Send to server :{%s}\n", inBuf);
     return send(client_sock_fd, inBuf, strlen(inBuf), 0);
 }
+int handleLoginResponse(char *message)
+{
+    char *split = strchr(message, '#');
+    *split = '\0';
+    char *value = message;
+    message = split + 1;
+    printf("value:%s\nmessage:%s\n", value, message);
+    if (strcmp(value, SUCCESS) == 0)
+    {
+        if (strcmp(message, OK) == 0) // username Sent
+        {
+            onSentUsername();
+        }
+        else //password sent
+        {
+            onLoginSuccess(message);
+        }
+    }
+    else
+    {
+        onLoginFailed(message);
+    }
+}
 
+int handleOnlineUsersList(char *message)
+{
+    int i, j = 0;
+    int messageLength = strlen(message);
+    onlineUserCount = 0;
+    for (i = 0; i < messageLength; i++)
+    {
+        printf("i=%d\n", i);
+        if (message[i] == SEPARATOR)
+        {
+            message[i] = '\0';
+            strcpy(onlineUsers[onlineUserCount], message + j);
+            printf(">>>%s<<<\n", onlineUsers[onlineUserCount]);
+            j = i + 1;
+            onlineUserCount++;
+            printf("\n>>%d\n", onlineUserCount);
+        }
+        printf(">>%d>>%c<<", messageLength,message[i]);
+    }
+    printf("Count:%d", onlineUserCount);
+    // updateUserList(onlineUsers, onlineUserCount);
+}
 void handleReponse(char *buff, int n)
 {
+    printf("Received form server:\"%s\"\n", buff);
     char action, *message, *value;
-    char *split;
     buff[n] = 0;
     if (buff[strlen(buff) - 1] == '\n')
         buff[strlen(buff) - 1] = '\0';
@@ -46,26 +90,10 @@ void handleReponse(char *buff, int n)
     switch (action)
     {
     case LOGIN_RESPONSE_ACTION:
-        split = strchr(message, '#');
-        *split = '\0';
-        value = message;
-        message = split + 1;
-        printf("value:%s\nmessage:%s\n", value, message);
-        if (strcmp(value, SUCCESS) == 0)
-        {
-            if (strcmp(message, OK) == 0) // username Sent
-            {
-                onSentUsername();
-            }
-            else //password sent
-            {
-                onLoginSuccess(message);
-            }
-        }
-        else
-        {
-            onLoginFailed(message);
-        }
+        handleLoginResponse(message);
+        break;
+    case GET_LIST_USER_ACTION:
+        handleOnlineUsersList(message);
         break;
     }
 }

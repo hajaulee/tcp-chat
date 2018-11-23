@@ -9,59 +9,73 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <signal.h>
+#include <sys/select.h>
+#include <sys/time.h>
+#include <netdb.h>
 #include "integer-constant.h"
 #include "string-constant.h"
 
 int client_sock_fd;
-char inBuf[MAXLINE];
+char *inBuf;
 char outBuf[MAXLINE];
 
-void clearBuf(char buff[]){
-    memset(buff, 0, strlen(buff));
+//the thread function
+void *receive_handler(void *);
+void fff(char *);
+
+void clearBuf(char *buff)
+{
+    memset(buff, 0, MAXLINE);
 }
 int sendRequest()
 {
     printf("Prepare:%s\n", inBuf);
     return send(client_sock_fd, inBuf, strlen(inBuf), 0);
 }
+
+void handleReponse(char *buff, int n)
+{
+    char action, *message, *value;
+    char *split;
+    buff[n] = 0;
+    if (buff[strlen(buff) - 1] == '\n')
+        buff[strlen(buff) - 1] = '\0';
+    action = buff[0];
+    message = buff + 1;
+    puts(buff);
+    switch (action)
+    {
+    case LOGIN_RESPONSE_ACTION:
+        split = strchr(message, '#');
+        *split = '\0';
+        value = message;
+        message = split + 1;
+        printf("value:%s\nmessage:%s\n", value, message);
+        if (strcmp(value, SUCCESS) == 0)
+        {
+            if (strcmp(message, OK) == 0) // username Sent
+            {
+                onSentUsername();
+            }
+            else //password sent
+            {
+                onLoginSuccess(message);
+            }
+        }
+        else
+        {
+            onLoginFailed(message);
+        }
+        break;
+    }
+}
 void signio_handler(int signo)
 {
-    char action, *message, *value, buff[MAXLINE];
-    char *split;
+    char buff[MAXLINE];
     int n = recv(client_sock_fd, buff, sizeof buff, 0);
     if (n > 0)
     {
-        buff[n] = 0;
-        if (buff[strlen(buff) - 1] == '\n')
-            buff[strlen(buff) - 1] = '\0';
-        action = buff[0];
-        message = buff + 1;
-        puts(buff);
-        switch (action)
-        {
-        case LOGIN_RESPONSE_ACTION:
-            split = strchr(message, '#');
-            *split = '\0';
-            value = message;
-            message = split + 1;
-            printf("value:%s\nmessage:%s\n", value, message);
-            if (strcmp(value, SUCCESS) == 0)
-            {
-                if (strcmp(message, OK) == 0)// username Sent
-                {
-                    onSentUsername();
-                }
-                else //password sent
-                {
-                    onLoginSuccess(message);
-                }
-            }
-            else
-            {
-                onLoginFailed(message);
-            }
-            break;
-        }
+        handleReponse(buff, n);
     }
     else
     {
@@ -70,6 +84,8 @@ void signio_handler(int signo)
 }
 int createClient()
 {
+
+    inBuf = (char *)malloc(MAXLINE * sizeof(char));
     struct sockaddr_in client_socket;
     struct sockaddr_in server_socket;
     client_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -90,7 +106,7 @@ int createClient()
 
     signal(SIGIO, signio_handler); // assign SIGIO to the handler
 
-    //set this process to be the process owner for SIGIO signal
+    // set this process to be the process owner for SIGIO signal
     if (fcntl(client_sock_fd, F_SETOWN, getpid()) < 0)
         printf("Error in setting own to socket");
 }

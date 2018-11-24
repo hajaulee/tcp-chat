@@ -5,19 +5,25 @@
 #include "gui-design.c"
 #include "client.c"
 
-GtkWidget *window;
+GtkWidget *window = NULL;
 GtkWidget *frame;
 GtkWidget *chatArea;
 GtkWidget *messageInput;
 
 char *you = "abc";
-char *onlineUsers[] = {"hajau", "tuanx", "agihi", "sep", "baclaocong", "hotboyxx", "occho"};
-int onlineUserCount = 7;
+char *currentChannel = PUBLIC;
+char onlineUsers[USER_NUM_MAX][32];
+char * messageStream[USER_NUM_MAX];
+char * publicStream;
+int onlineUserCount = 0;
 
 int main(int argc, char const *argv[])
 {
+	publicStream = (char*)malloc(1024 * MAXLINE);
 	createClient();
 	gtk_init(&argc, &argv);
+	// initLoginDialog();
+	initMainWindow();
 	showLoginDialog();
 	gtk_main();
 

@@ -24,7 +24,20 @@ int auth[USER_NUM_MAX];
 
 int sendResponse(int connfd)
 {
+    printf("Send to client:{%s}\n", buf);
     return send(connfd, buf, strlen(buf), 0);
+}
+int broadCast()
+{
+    int i;
+    for (i = 0; i < USER_NUM_MAX; i++)
+    {
+        if (users[i].fd != NONE_SOCKET)
+        {
+            sendResponse(users[i].fd);
+        }
+    }
+    return i;
 }
 int cleanBuffer()
 {
@@ -42,7 +55,40 @@ int checkUser(char *name)
     }
     return -1;
 }
+int getOnlineUsers(char *list)
+{
+    int i;
+    printf("\n[");
+    for (i = 0; i < USER_NUM_MAX; ++i)
+    {
+        if (users[i].fd != NONE_SOCKET)
+        {
+            printf("%s,", users[i].username);
+            strcat(list, users[i].username);
+            list[strlen(list)] = SEPARATOR;
+        }
+    }
+    puts("]");
+    return i;
+}
 
+int getOnlineUsersMessage()
+{
+    buf[0] = GET_LIST_USER_ACTION;
+    getOnlineUsers(buf + 1);
+}
+int handleUserGetOnlineMember(int connfd)
+{
+    getOnlineUsersMessage();
+    sendResponse(connfd);
+}
+
+int broadcastOnlineUsers()
+{
+    cleanBuffer();
+    getOnlineUsersMessage();
+    broadCast();
+}
 int markUserNameInputed(int fdnum, int userId)
 {
     auth[fdnum] = -1 - userId;
@@ -58,7 +104,7 @@ int validatePassword(int fdnum, char *password)
     if (auth[fdnum] < 0)
     {
         User u = users[-1 - auth[fdnum]];
-        printf("User:{%s}{%s}{%s}{%d}\n", u.username, u.password, password, u.fd);
+        printf("\n{\n  username:%s,\n  password:%s,\n  input_password:%s,\n  socket:%d\n}\n", u.username, u.password, password, u.fd);
         if (strcmp(u.password, password) == 0)
         {
             if (u.fd != 0)
@@ -99,12 +145,63 @@ int loadUserList(const char *source)
     }
 }
 
-void logoutUser(int connfd)
+void handleUserLogout(int connfd)
 {
     int userId = auth[connfd];
-    users[userId].fd = 0;
-    auth[connfd] = -1;
+    printf("\n{\n  username:%s,\n  status:logout\n}\n", users[auth[connfd]].username);
+    users[userId].fd = NONE_SOCKET;
+    auth[connfd] = NONE_USER;
+    broadcastOnlineUsers();
 }
+
+int handleUserSendUsername(char *message, int connfd)
+{
+    int userId = checkUser(message);
+    if (userId == NONE_USER)
+    {
+        sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, USER_INVALID);
+    }
+    else
+    {
+        markUserNameInputed(connfd, userId);
+        sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, SUCCESS, OK);
+    }
+    sendResponse(connfd);
+    return userId;
+}
+int handleUserSendPassword(char *message, int connfd)
+{
+    int userId = validatePassword(connfd, message);
+    if (userId == CODE_PASSWORD_INCORRECT) // password incorrect
+    {
+        sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, ACCOUNT_INVALID);
+    }
+    else
+    {
+        // password correct
+        // user login
+        if (userId == CODE_LOGGED_BY_ANOTHER) // Account are Already logged by other client
+        {
+            // sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, SESSION_INVALID);
+            // userId = -1 - auth[connfd]; // Get logged user Id
+            // User u = users[userId];
+            // sendResponse(u.fd); // send message to logged User for loggout
+            // u.fd = connfd;      // update new socket
+            cleanBuffer();
+            sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, SESSION_INVALID);
+        }
+        else // Account logged normaly
+        {
+            sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, SUCCESS, WELLCOME);
+            auth[connfd] = userId; // update auth, this connfd -> user
+            users[userId].fd = connfd;
+            printf("\n{\n  username:%s,\n  status:logged\n}\n", users[auth[connfd]].username);
+        }
+    }
+    sendResponse(connfd);
+    return userId;
+}
+
 int handleMessage(int connfd)
 {
     int n, userId;
@@ -118,54 +215,24 @@ int handleMessage(int connfd)
         printf("String received from client: %s\n", readBuf);
         action = readBuf[0];
         message = readBuf + 1;
+        printf("\n{\n  action:%c,\n  message:%s\n}\n", action, message);
         cleanBuffer();
         switch (action)
         {
         case SEND_USER_ACTION:
-            puts("114");
-            userId = checkUser(message);
-            if (userId == -1)
-            {
-                sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, USER_INVALID);
-            }
-            else
-            {
-                markUserNameInputed(connfd, userId);
-                sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, SUCCESS, OK);
-            }
-            sendResponse(connfd);
-            puts("126");
+            handleUserSendUsername(message, connfd);
             break;
         case SEND_PASSWORD_ACTION:
-            userId = validatePassword(connfd, message);
-            if (userId == CODE_PASSWORD_INCORRECT) // password incorrect
+            if (handleUserSendPassword(message, connfd) != CODE_PASSWORD_INCORRECT)
             {
-                sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, ACCOUNT_INVALID);
+                broadcastOnlineUsers();
             }
-            else
-            {
-                if (userId == CODE_LOGGED_BY_ANOTHER) // Account are Already logged by other client
-                {
-                    sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, SESSION_INVALID);
-                    User u = users[-1 - auth[connfd]];
-                    sendResponse(u.fd);
-                    u.fd = connfd;
-                    auth[connfd] = -1 - auth[connfd];
-
-                    cleanBuffer();
-                    sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, SUCCESS, SESSION_INVALID);
-                    sendResponse(connfd);
-                }
-                else // Account logged normaly
-                {
-                    sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, SUCCESS, WELLCOME);
-                    auth[connfd] = userId;
-                }
-            }
-            sendResponse(connfd);
             break;
         case LOGOUT_ACTION:
-            logoutUser(connfd);
+            handleUserLogout(connfd);
+            break;
+        case GET_LIST_USER_ACTION:
+            handleUserGetOnlineMember(connfd);
             break;
         }
     }
@@ -207,7 +274,7 @@ int createServe()
 
     printf("%s\n", "Server running...waiting for connections.");
 
-    fprintf(stdout, "1hello: %d\n", maxfd);
+    fprintf(stdout, "Current maxfd: %d\n", maxfd);
     fflush(stdout);
     //Assign initial value for the fd_set
     maxfd = listenfd;
@@ -260,6 +327,9 @@ int createServe()
                         {
                             perror("recv");
                         }
+                        if (auth[i] != -1)
+                            handleUserLogout(i);
+                        broadcastOnlineUsers();
                         close(i);           // bye!
                         FD_CLR(i, &master); // remove from master set
                         auth[i] = -1;

@@ -1,9 +1,9 @@
-default: run
+default: main
 
 main:
 	clear 
-	gcc -w -g -o client client-chat.c `pkg-config gtk+-3.0 --cflags --libs`
-	gcc -o server server.c -g 
+	gcc -Wall -g -o client client-chat.c `pkg-config gtk+-3.0 --cflags --libs`
+	gcc -o server server.c -g -Wall
 
 run: main
 	./client 

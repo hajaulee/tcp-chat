@@ -2,18 +2,20 @@
 #include <gtk/gtk.h>
 #include "handle-event.c"
 
-extern GtkWidget *window = NULL;
+extern GtkWidget *window;
 extern GtkWidget *frame;
 extern GtkWidget *chatArea;
 extern GtkWidget *messageInput;
 extern char *you;
-extern char *onlineUsers[];
+extern char *currentChannel;
+char onlineUsers[USER_NUM_MAX][32];
 extern int onlineUserCount;
 GtkWidget *userListBox;
-GtkWidget *loginDialog;
+GtkWidget *loginDialog = NULL;
 GtkWidget *inputUsername;
 GtkWidget *inputPassword;
 GtkWidget *yournameLabel;
+GtkWidget *publicChannelButton;
 void set_size(GtkWidget *gw, int width, int height)
 {
 	gtk_widget_set_size_request(gw, width, height);
@@ -55,7 +57,7 @@ void initLoginDialog()
 	GtkWidget *cancelButton = gtk_button_new_with_label(CANCEL);
 	inputUsername = gtk_entry_new();
 	inputPassword = gtk_entry_new();
-	gtk_entry_set_visibility(inputPassword, FALSE);
+	gtk_entry_set_visibility(GTK_ENTRY(inputPassword), FALSE);
 
 	gtk_box_pack_start(GTK_BOX(box), loginButton, TRUE, TRUE, 2);
 	gtk_box_pack_start(GTK_BOX(box), cancelButton, TRUE, TRUE, 2);
@@ -66,10 +68,10 @@ void initLoginDialog()
 	set_size(loginButton, 100, 30);
 	set_size(cancelButton, 100, 30);
 
-	gtk_widget_set_margin_left(inputUsername, 2);
-	gtk_widget_set_margin_right(inputUsername, 2);
-	gtk_widget_set_margin_left(inputPassword, 2);
-	gtk_widget_set_margin_right(inputPassword, 2);
+	gtk_widget_set_margin_start(inputUsername, 2);
+	gtk_widget_set_margin_end(inputUsername, 2);
+	gtk_widget_set_margin_start(inputPassword, 2);
+	gtk_widget_set_margin_end(inputPassword, 2);
 
 	gtk_fixed_put(GTK_FIXED(dialog_ground), tframe, 0, 20);
 	gtk_fixed_put(GTK_FIXED(dialog_ground), bframe, 0, 80);
@@ -85,7 +87,7 @@ void initLoginDialog()
 	data_array[1] = inputPassword;
 	data_array[2] = loginDialog;
 	g_signal_connect(loginButton, "clicked", G_CALLBACK(onLoginButtonClicked), data_array);
-	g_signal_connect(cancelButton, "clicked", G_CALLBACK(destroySomething), loginDialog);
+	g_signal_connect(cancelButton, "clicked", G_CALLBACK(onExit), loginDialog);
 	g_signal_connect(inputUsername, "activate", G_CALLBACK(onLoginButtonClicked), data_array);
 	g_signal_connect(inputPassword, "activate", G_CALLBACK(onLoginButtonClicked), data_array);
 	// gtk_widget_show_all(loginDialog);
@@ -182,7 +184,6 @@ void initCurrentUserBox(int x, int y)
 GtkWidget *initPublicChannelBox(int x, int y)
 {
 	GtkWidget *publicChannelGroupBox;
-	GtkWidget *publicChannelButton;
 	publicChannelGroupBox = gtk_frame_new(PUBLIC);
 	set_size(publicChannelGroupBox, 115, 54);
 	set_pos(publicChannelGroupBox, x, y);
@@ -196,25 +197,47 @@ GtkWidget *initPublicChannelBox(int x, int y)
 
 void delFromUserBox(gpointer child, gpointer user_data)
 {
-	gtk_container_remove(userListBox, (GtkWidget *)child);
+	gtk_container_remove(GTK_CONTAINER(userListBox), (GtkWidget *)child);
 }
 
-void updateUserList(char *n[], int count)
+int setButtonFocus(GtkWidget *button, char *s)
+{
+	GdkRGBA color;
+	gdk_rgba_parse(&color, s);
+	gtk_widget_override_background_color(GTK_WIDGET(button), GTK_STATE_NORMAL, &color);
+}
+void addButtonToUserListBox(char n[][32], int count)
+{
+	int i = 0;
+	if (strcmp(PUBLIC, currentChannel) == 0)
+	{
+		setButtonFocus(publicChannelButton, "red");
+	}
+	else
+		setButtonFocus(publicChannelButton, "white");
+	for (int i = 0; i < count; ++i)
+	{
+		if (strcmp(n[i], you) != 0)
+		{
+			printf(">>>>>{{{%s}}}\n", n[i]);
+			GtkWidget *userIndex = gtk_button_new_with_label(n[i]);
+			if (strcmp(n[i], currentChannel) == 0)
+			{
+				setButtonFocus(userIndex, "red");
+			}
+			gtk_box_pack_end(GTK_BOX(userListBox), userIndex, TRUE, TRUE, 0);
+			g_signal_connect(userIndex, "clicked", G_CALLBACK(onChannelButtonClicked), n[i]);
+		}
+	}
+	printf("Setup success\n");
+	gtk_widget_show_all(userListBox);
+}
+
+void updateUserList(char n[][32], int count)
 {
 	GList *childs = gtk_container_get_children(userListBox);
 	g_list_foreach(childs, delFromUserBox, NULL);
 	addButtonToUserListBox(n, count);
-}
-void addButtonToUserListBox(char *n[], int count)
-{
-	int i = 0;
-	for (int i = 0; i < count; ++i)
-	{
-		GtkWidget *userIndex = gtk_button_new_with_label(n[i]);
-		gtk_box_pack_start(GTK_BOX(userListBox), userIndex, TRUE, TRUE, 0);
-		g_signal_connect(userIndex, "clicked", G_CALLBACK(onChannelButtonClicked), n[i]);
-	}
-	gtk_widget_show_all(userListBox);
 }
 GtkWidget *initUserList(int x, int y, char *names[], int amount)
 {
@@ -250,12 +273,13 @@ void initMainWindow()
 	frame = gtk_fixed_new();
 	gtk_container_add(GTK_CONTAINER(window), frame);
 	gtk_widget_set_margin_bottom(frame, 5);
-	gtk_widget_set_margin_right(frame, 5);
+	gtk_widget_set_margin_end(frame, 5);
 
 	initCurrentUserBox(5, 4);
 	initPublicChannelBox(5, 94);
-	initUserList(5, 154, onlineUsers, 7);
 	initChatArea(120, 10);
+
+	initUserList(5, 154, onlineUsers, 7);
 	initMessageInput(120, 280);
 
 	g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL); //Ket thuc chuong trinh khi dong cua so chinh

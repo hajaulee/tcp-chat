@@ -182,21 +182,21 @@ int handleUserSendPassword(char *message, int connfd)
         // user login
         if (userId == CODE_LOGGED_BY_ANOTHER) // Account are Already logged by other client
         {
-            sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, SESSION_INVALID);
-            userId = -1 - auth[connfd]; // Get logged user Id
-            User u = users[userId];
-            sendResponse(u.fd); // send message to logged User for loggout
-            u.fd = connfd;      // update new socket
+            // sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, SESSION_INVALID);
+            // userId = -1 - auth[connfd]; // Get logged user Id
+            // User u = users[userId];
+            // sendResponse(u.fd); // send message to logged User for loggout
+            // u.fd = connfd;      // update new socket
             cleanBuffer();
-            sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, SUCCESS, SESSION_INVALID);
+            sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, SESSION_INVALID);
         }
         else // Account logged normaly
         {
             sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, SUCCESS, WELLCOME);
+            auth[connfd] = userId; // update auth, this connfd -> user
+            users[userId].fd = connfd;
+            printf("\n{\n  username:%s,\n  status:logged\n}\n", users[auth[connfd]].username);
         }
-        auth[connfd] = userId; // update auth, this connfd -> user
-        users[userId].fd = connfd;
-        printf("\n{\n  username:%s,\n  status:logged\n}\n", users[auth[connfd]].username);
     }
     sendResponse(connfd);
     return userId;
@@ -223,7 +223,8 @@ int handleMessage(int connfd)
             handleUserSendUsername(message, connfd);
             break;
         case SEND_PASSWORD_ACTION:
-            if (handleUserSendPassword(message, connfd) != CODE_PASSWORD_INCORRECT){
+            if (handleUserSendPassword(message, connfd) != CODE_PASSWORD_INCORRECT)
+            {
                 broadcastOnlineUsers();
             }
             break;
@@ -321,14 +322,14 @@ int createServe()
                         if (r == 0)
                         { // connection closed
                             printf("Socket %d hung up\n", i);
-                            if (auth[i] != -1)
-                                handleUserLogout(i);
-                            broadcastOnlineUsers();
                         }
                         else
                         {
                             perror("recv");
                         }
+                        if (auth[i] != -1)
+                            handleUserLogout(i);
+                        broadcastOnlineUsers();
                         close(i);           // bye!
                         FD_CLR(i, &master); // remove from master set
                         auth[i] = -1;

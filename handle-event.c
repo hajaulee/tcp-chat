@@ -1,4 +1,6 @@
 #include <gtk/gtk.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include "string-constant.h"
 #include "integer-constant.h"
 
@@ -7,16 +9,27 @@ extern GtkWidget *frame;
 extern GtkWidget *userListBox;
 extern char *inBuf;
 extern GtkWidget *initUserList(int, int, char *[], int);
-extern void addButtonToUserListBox(char *[], int);
-extern void sendThread(char*);
+extern void addButtonToUserListBox(char[][32], int);
+extern void sendThread(char *);
 extern GtkWidget *loginDialog;
 extern GtkWidget *inputUsername;
 extern GtkWidget *inputPassword;
-extern 	GtkWidget *yournameLabel;
-extern char * you;
-char *username;
-char *password;
-
+extern GtkWidget *yournameLabel;
+extern GtkWidget *messageInput;
+extern char *you;
+extern char onlineUsers[USER_NUM_MAX][32];
+extern int onlineUserCount;
+extern GtkWidget *publicChannelButton;
+extern char *currentChannel;
+extern void clearBuf(char *);
+extern int sendRequest();
+extern void showLoginDialog();
+extern void showMessage(GtkWidget *, GtkMessageType, char *, char *);
+extern void showMainWindow();
+extern void updateUserList(char [][32], int);
+extern int setButtonFocus(GtkWidget*, char*);
+char username[100];
+char password[100];
 
 void onLogoutButtonClicked(GtkWidget *widget, gpointer *data)
 {
@@ -31,16 +44,19 @@ void onLogoutButtonClicked(GtkWidget *widget, gpointer *data)
 void onLoginSuccess(char *message)
 {
 	//success
+	you = username;
 	showMessage(loginDialog, GTK_MESSAGE_WARNING, LOGIN_SUCCESS, message);
-	gtk_entry_set_text(inputPassword, BLANK);
+	gtk_entry_set_text(GTK_ENTRY(inputPassword), BLANK);
 	gtk_widget_hide(loginDialog);
 	showMainWindow();
-	you = username;
-	gtk_label_set_text(yournameLabel, username);
-	clearBuf(inBuf);
-	sprintf(inBuf, "%c", GET_LIST_USER_ACTION);
-	sendRequest();
+	gtk_label_set_text(GTK_LABEL(yournameLabel), username);
+}
 
+void onForceLogout(char *message)
+{
+	gtk_widget_hide(window);
+	showLoginDialog();
+	showMessage(loginDialog, GTK_MESSAGE_WARNING, FORCE_LOGOUT, message);
 }
 void onSentUsername()
 {
@@ -55,8 +71,8 @@ void onLoginFailed(char *message)
 }
 void onLoginButtonClicked(GtkWidget *widget, gpointer gp)
 {
-	username = gtk_entry_get_text(inputUsername);
-	password = gtk_entry_get_text(inputPassword);
+	strcpy(username, (char*)gtk_entry_get_text(GTK_ENTRY(inputUsername)));
+	strcpy(password, (char*)gtk_entry_get_text(GTK_ENTRY(inputPassword)));
 
 	if (strlen(username) < 1 || strlen(password) < 1)
 		showMessage(loginDialog, GTK_MESSAGE_WARNING, LOGIN_FAILED, NOT_EMPTY);
@@ -70,15 +86,25 @@ void onLoginButtonClicked(GtkWidget *widget, gpointer gp)
 
 void onChannelButtonClicked(GtkWidget *widget, gpointer data)
 {
-	char *channel = (char *)data;
-	showMessage(window, GTK_MESSAGE_INFO, "haha", channel);
+	currentChannel = (char *)data;
+	updateUserList(onlineUsers, onlineUserCount);
+	if (strcmp(currentChannel, PUBLIC) == 0)
+		setButtonFocus(publicChannelButton, "red");
+	showMessage(window, GTK_MESSAGE_INFO, "haha", currentChannel);
 }
 
-void onExit(GtkWidget *widget, gpointer data){
+void onExit(GtkWidget *widget, gpointer data)
+{
 	exit(0);
 }
 void onSendButtonClicked(GtkWidget *widget, gpointer data)
 {
-	char *newlist[] = {"admin", "user"};
-	updateUserList(newlist, 2);
+	clearBuf(inBuf);
+	char text[100];
+	strcpy(text, (char*)gtk_entry_get_text(GTK_ENTRY (messageInput)));
+	if (strcmp(currentChannel, PUBLIC) == 0)
+		sprintf(inBuf, "%c%s", CHANNEL_MESSAGE_ACTION, text);
+	else
+		sprintf(inBuf, "%c%s#%s", PRIVATE_MESSAGE_ACTION, currentChannel, text);
+	sendRequest();
 }

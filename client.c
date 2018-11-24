@@ -17,10 +17,10 @@
 
 int client_sock_fd;
 char *inBuf;
-char outBuf[MAXLINE];
+char outBuf[4096];
 extern char onlineUsers[USER_NUM_MAX][32];
 extern int onlineUserCount;
-extern void updateUserList(char *n[], int);
+extern void updateUserList(char n[][32], int);
 
 void clearBuf(char *buff)
 {
@@ -72,10 +72,12 @@ int handleOnlineUsersList(char *message)
             onlineUserCount++;
             printf("\n>>%d\n", onlineUserCount);
         }
-        printf(">>%d>>%c<<", messageLength,message[i]);
+        if (message[i + 1] == '\0')
+            break;
+        printf("%c", message[i]);
     }
     printf("Count:%d", onlineUserCount);
-    // updateUserList(onlineUsers, onlineUserCount);
+    updateUserList(onlineUsers, onlineUserCount);
 }
 void handleReponse(char *buff, int n)
 {
@@ -99,11 +101,12 @@ void handleReponse(char *buff, int n)
 }
 void signio_handler(int signo)
 {
-    char buff[MAXLINE];
-    int n = recv(client_sock_fd, buff, sizeof buff, 0);
+    char buffer[4096];
+    clearBuf(buffer);
+    int n = recv(client_sock_fd, buffer, MAXLINE, 0);
     if (n > 0)
     {
-        handleReponse(buff, n);
+        handleReponse(buffer, n);
     }
     else
     {

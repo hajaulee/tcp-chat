@@ -8,10 +8,13 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <fcntl.h>
+#include <pthread.h>
+
 #include "integer-constant.h"
 #include "string-constant.h"
 
 char buf[MAXLINE];
+char *publicStream;
 typedef struct $
 {
     char username[32];
@@ -42,6 +45,7 @@ int broadCast()
 int cleanBuffer()
 {
     memset(buf, 0, MAXLINE);
+    return 0;
 }
 int checkUser(char *name)
 {
@@ -53,7 +57,7 @@ int checkUser(char *name)
             return i;
         }
     }
-    return -1;
+    return NONE_USER;
 }
 int getOnlineUsers(char *list)
 {
@@ -75,28 +79,32 @@ int getOnlineUsers(char *list)
 int getOnlineUsersMessage()
 {
     buf[0] = GET_LIST_USER_ACTION;
-    getOnlineUsers(buf + 1);
+    return getOnlineUsers(buf + 1);
 }
 int handleUserGetOnlineMember(int connfd)
 {
-    getOnlineUsersMessage();
+    int n = getOnlineUsersMessage();
     sendResponse(connfd);
+    return n;
 }
 
 int broadcastOnlineUsers()
 {
     cleanBuffer();
-    getOnlineUsersMessage();
+    int n = getOnlineUsersMessage();
     broadCast();
+    return n;
 }
 int markUserNameInputed(int fdnum, int userId)
 {
     auth[fdnum] = -1 - userId;
+    return auth[fdnum];
 }
 
 int markUserLogged(int fdnum, int userId)
 {
     auth[fdnum] = userId;
+    return userId;
 }
 
 int validatePassword(int fdnum, char *password)
@@ -122,11 +130,13 @@ int initAuth()
     {
         auth[i] = -1;
     }
+    return i;
 }
 int initUserList()
 {
     memset(users, 0, sizeof users);
     printf("Reset user list on %ld bytes\n", sizeof users);
+    return sizeof users;
 }
 int loadUserList(const char *source)
 {
@@ -143,6 +153,7 @@ int loadUserList(const char *source)
         sscanf(temp, "%s %s", users[i].username, users[i].password);
         printf("User:{\n  username:\"%s\"\n  password:\"%s\"\n}\n", users[i].username, users[i].password);
     }
+    return i;
 }
 
 void handleUserLogout(int connfd)
@@ -202,9 +213,58 @@ int handleUserSendPassword(char *message, int connfd)
     return userId;
 }
 
+void handlePublicMessage(int connfd, char *message)
+{
+    char temp[MAXLINE];
+    if (connfd == -1)
+    {
+        sprintf(temp, "%s:%s\n", ">", message);
+        sprintf(buf, "%c%s#%s", CHANNEL_MESSAGE_ACTION, ">", message);
+    }
+    else
+    {
+        sprintf(temp, "%s:%s\n", users[auth[connfd]].username , message);
+
+        sprintf(buf, "%c%s#%s", CHANNEL_MESSAGE_ACTION, users[auth[connfd]].username, message);
+    }
+    strcat(publicStream, temp);
+    broadCast();
+}
+
+void handleGetStream(int connfd)
+{
+    sprintf(buf, "%c%s", GET_PUBLIC_STREAM, publicStream);
+    sendResponse(connfd);
+}
+void handlePrivateMessage(int connfd, char *message)
+{
+    char *sender = users[auth[connfd]].username;
+    char *split = strchr(message, '#');
+    *split = '\0';
+    char *m_username = message;
+    message = split + 1;
+    int userId = checkUser(m_username);
+    if (userId != NONE_USER)
+    {
+        sprintf(buf, "%c%s#%s", PRIVATE_MESSAGE_ACTION, sender, message);
+        sendResponse(users[userId].fd);
+    }
+    else
+    {
+        printf("Error: No user:{%s}\n", m_username);
+    }
+}
+void *myThreadFun(void *vargp)
+{
+    sleep(1);
+    char temp[200];
+    cleanBuffer();
+    sprintf(temp, "%s đã tham gia phòng chat!", (char*)vargp);
+    handlePublicMessage(-1, temp);
+}
 int handleMessage(int connfd)
 {
-    int n, userId;
+    int n;
     char action, *message;
     char readBuf[MAXLINE];
     if ((n = recv(connfd, readBuf, MAXLINE, 0)) > 0)
@@ -226,6 +286,9 @@ int handleMessage(int connfd)
             if (handleUserSendPassword(message, connfd) != CODE_PASSWORD_INCORRECT)
             {
                 broadcastOnlineUsers();
+                pthread_t thread_id;
+                printf("Before Thread\n");
+                pthread_create(&thread_id, NULL, myThreadFun, users[auth[connfd]].username);
             }
             break;
         case LOGOUT_ACTION:
@@ -234,6 +297,17 @@ int handleMessage(int connfd)
         case GET_LIST_USER_ACTION:
             handleUserGetOnlineMember(connfd);
             break;
+        case CHANNEL_MESSAGE_ACTION:
+            handlePublicMessage(connfd, message);
+            break;
+        case PRIVATE_MESSAGE_ACTION:
+            handlePrivateMessage(connfd, message);
+            break;
+        case GET_PUBLIC_STREAM:
+            handleGetStream(connfd);
+            break;
+        default:
+            puts("\n--------------------UNKNOW ACTION-----------------");
         }
     }
     return n;
@@ -243,9 +317,9 @@ int handleNewConnection(int connfd)
 {
     return 0;
 }
-int createServe()
+int createServer()
 {
-    int maxfd, listenfd, connfd, n, i, rv;
+    int maxfd, listenfd, connfd, i, rv;
     socklen_t clilen;
     fd_set readfds, master;
     struct sockaddr_in cliaddr, servaddr;
@@ -273,14 +347,14 @@ int createServe()
     listen(listenfd, USER_NUM_MAX);
 
     printf("%s\n", "Server running...waiting for connections.");
-
-    fprintf(stdout, "Current maxfd: %d\n", maxfd);
-    fflush(stdout);
     //Assign initial value for the fd_set
     maxfd = listenfd;
     FD_ZERO(&master);  //FD_ZERO works like memset 0;
     FD_ZERO(&readfds); //clear the master and temp sets
     FD_SET(maxfd, &master);
+
+    fprintf(stdout, "Current maxfd: %d\n", maxfd);
+    fflush(stdout);
     while (1)
     {
 
@@ -342,7 +416,8 @@ int createServe()
 
 int main(int argc, char **argv)
 {
+    publicStream = (char *)malloc(1024 * MAXLINE);
     loadUserList("users.txt");
     initAuth();
-    createServe();
+    createServer();
 }

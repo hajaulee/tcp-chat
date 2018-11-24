@@ -4,8 +4,14 @@
 #include "string-constant.h"
 #include "integer-constant.h"
 
-#define runInUIThread(x) gdk_threads_enter(); x; gdk_threads_leave();
-
+#define runInUIThread(x) \
+	gdk_threads_enter(); \
+	x;                   \
+	gdk_threads_leave();
+#define runOnUIThread(cc) \
+	gdk_threads_enter();  \
+	cc;                   \
+	puts("heleo");
 extern GtkWidget *window;
 extern GtkWidget *frame;
 extern GtkWidget *userListBox;
@@ -47,16 +53,14 @@ void onLoginSuccess(char *message)
 {
 	//success
 	you = username;
-	runInUIThread( showMessage(loginDialog, GTK_MESSAGE_WARNING, LOGIN_SUCCESS, WELLCOME));
+	runInUIThread(showMessage(loginDialog, GTK_MESSAGE_WARNING, LOGIN_SUCCESS, WELLCOME));
 	runInUIThread(gtk_entry_set_text(GTK_ENTRY(inputPassword), BLANK));
 	runInUIThread(showMainWindow());
-	gtk_widget_set_visible(loginDialog, FALSE);
-	gtk_label_set_text(GTK_LABEL(yournameLabel), username);
+	runInUIThread(gtk_widget_set_visible(loginDialog, FALSE);
+				  gtk_label_set_text(GTK_LABEL(yournameLabel), username););
 	clearBuf(inBuf);
 	sprintf(inBuf, "%c", GET_PUBLIC_STREAM);
 	sendRequest();
-
-	// g_mutex_unlock(&mutex_interface);
 }
 
 void onForceLogout(char *message)
@@ -74,7 +78,10 @@ void onSentUsername()
 void onLoginFailed(char *message)
 {
 	//invalid
-	showMessage(loginDialog, GTK_MESSAGE_ERROR, LOGIN_FAILED, message);
+	runInUIThread(gtk_widget_set_visible(loginDialog, FALSE);
+				  showMessage(loginDialog, GTK_MESSAGE_ERROR, LOGIN_FAILED, message);
+				  gtk_widget_set_visible(loginDialog, TRUE));
+	// showMessage(loginDialog, GTK_MESSAGE_ERROR, LOGIN_FAILED, message);
 }
 void onLoginButtonClicked(GtkWidget *widget, gpointer gp)
 {

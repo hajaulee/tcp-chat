@@ -24,6 +24,7 @@ extern char *publicStream;
 extern GtkWidget *chatArea;
 extern void updateUserList(char n[][32], int);
 extern void textViewSetText(GtkWidget *, char *);
+extern char *currentChannel;
 void clearBuf(char *buff)
 {
     memset(buff, 0, MAXLINE);
@@ -76,7 +77,9 @@ int handlePublicMessage(char *message)
     char temp[MAXLINE];
     sprintf(temp, "%s:%s\n", sender, message);
     strcat(publicStream, temp);
-    textViewSetText(chatArea, publicStream);
+    if (strcmp(currentChannel, PUBLIC) == 0){
+        textViewSetText(chatArea, publicStream);
+    }
     return 0;
 }
 int handleOnlineUsersList(char *message)

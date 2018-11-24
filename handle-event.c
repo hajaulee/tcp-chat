@@ -29,6 +29,8 @@ extern char onlineUsers[USER_NUM_MAX][32];
 extern int onlineUserCount;
 extern GtkWidget *publicChannelButton;
 extern char *currentChannel;
+extern char *publicStream;
+extern GtkWidget *chatArea;
 extern void clearBuf(char *);
 extern int sendRequest();
 extern void showLoginDialog();
@@ -103,7 +105,11 @@ void onChannelButtonClicked(GtkWidget *widget, gpointer data)
 	currentChannel = (char *)data;
 	updateUserList(onlineUsers, onlineUserCount);
 	if (strcmp(currentChannel, PUBLIC) == 0)
+	{
+		printf("setButtonFocus\n");
 		setButtonFocus(publicChannelButton, DOWN);
+		textViewSetText(chatArea, publicStream);
+	}
 	showMessage(window, GTK_MESSAGE_INFO, "haha", currentChannel);
 }
 
@@ -115,7 +121,9 @@ void onSendButtonClicked(GtkWidget *widget, gpointer data)
 {
 	clearBuf(inBuf);
 	char text[100];
-	strcpy(text, (char *)gtk_entry_get_text(GTK_ENTRY(messageInput)));
+	char *entryText;
+	entryText = (char *)gtk_entry_get_text(GTK_ENTRY(messageInput));
+	strcpy(text, entryText);
 	gtk_entry_set_text(GTK_ENTRY(messageInput), BLANK);
 	if (strcmp(currentChannel, PUBLIC) == 0)
 		sprintf(inBuf, "%c%s", CHANNEL_MESSAGE_ACTION, text);

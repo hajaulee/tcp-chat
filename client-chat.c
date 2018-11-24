@@ -25,13 +25,10 @@ int main(int argc, char *argv[])
 	publicStream = (char *)malloc(1024 * MAXLINE);
 	createClient();
 	gtk_init(&argc, &argv);
-
-	// initLoginDialog();
+	gdk_threads_enter();
 	initMainWindow();
 	showLoginDialog();
-	// gdk_threads_enter();
+
 	gtk_main();
-	// gdk_threads_leave();
-	// gtk_main();
 	return 0;
 }

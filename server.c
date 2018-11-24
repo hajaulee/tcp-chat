@@ -261,6 +261,7 @@ void *myThreadFun(void *vargp)
     cleanBuffer();
     sprintf(temp, "%s đã tham gia phòng chat!", (char*)vargp);
     handlePublicMessage(-1, temp);
+    return NULL;
 }
 int handleMessage(int connfd)
 {

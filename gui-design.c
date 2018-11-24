@@ -46,6 +46,7 @@ void showMessage(GtkWidget *parent, GtkMessageType type, char *mms, char *conten
 									 GTK_BUTTONS_OK,
 									 "%s", mms);
 	gtk_message_dialog_format_secondary_text(GTK_MESSAGE_DIALOG(mdialog), "%s", content);
+	gtk_widget_show_all(mdialog);
 	gtk_dialog_run(GTK_DIALOG(mdialog));
 	gtk_widget_destroy(mdialog);
 }

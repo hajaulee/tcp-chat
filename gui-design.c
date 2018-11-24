@@ -10,12 +10,18 @@ extern char *you;
 extern char *currentChannel;
 char onlineUsers[USER_NUM_MAX][32];
 extern int onlineUserCount;
+extern char *publicStream;
 GtkWidget *userListBox;
 GtkWidget *loginDialog = NULL;
 GtkWidget *inputUsername;
 GtkWidget *inputPassword;
 GtkWidget *yournameLabel;
 GtkWidget *publicChannelButton;
+GtkWidget *userListScroller;
+GtkWidget *chatOutputScroller;
+
+GMutex mutex_interface;
+
 void set_size(GtkWidget *gw, int width, int height)
 {
 	gtk_widget_set_size_request(gw, width, height);
@@ -135,10 +141,49 @@ GtkWidget *initMessageInput(int x, int y)
 	return messageInput;
 }
 
+void textViewSetText(GtkWidget *textView, char *text)
+{
+	char *x, *q;
+	GtkTextBuffer *t_buffer;
+	GtkTextIter start;
+	GtkTextIter end;
+	t_buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textView));
+	if (t_buffer == NULL)
+	{
+		printf("Get buffer fail!");
+		t_buffer = gtk_text_buffer_new(NULL);
+	}
+	gtk_text_buffer_set_text(t_buffer, text, -1);
+	int i, lineCount = gtk_text_buffer_get_line_count(t_buffer);
+	GtkTextTag *tag = gtk_text_buffer_create_tag(t_buffer, NULL,
+												 "foreground", "blue",
+												 "weight", PANGO_WEIGHT_BOLD, NULL);
+	for (i = 0; i < lineCount - 1; ++i)
+	{
+		gtk_text_buffer_get_iter_at_line(t_buffer, &start, i);
+		gtk_text_buffer_get_end_iter(t_buffer, &end);
+		x = gtk_text_buffer_get_text(t_buffer, &start, &end, TRUE);
+		q = strchr(x, ':');
+		gtk_text_buffer_get_iter_at_line_index(t_buffer, &end, i, q - x);
+
+		gtk_text_buffer_apply_tag(t_buffer, tag, &start, &end);
+	}
+
+	gtk_text_view_set_buffer(GTK_TEXT_VIEW(textView), t_buffer);
+	GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(chatOutputScroller));
+	gtk_adjustment_set_value(adj, gtk_adjustment_get_upper(adj));
+	gtk_scrolled_window_set_vadjustment(GTK_SCROLLED_WINDOW(chatOutputScroller), adj);
+}
+
+int callTextViewSetText(gpointer data)
+{
+	g_mutex_lock(&mutex_interface);
+	textViewSetText(chatArea, publicStream);
+	g_mutex_unlock(&mutex_interface);
+	return 0;
+}
 GtkWidget *initChatArea(int x, int y)
 {
-
-	GtkWidget *chatOutputScroller;
 	GtkWidget *outputBox;
 
 	//khoi tao hop chua chatArea hien thi khung chat
@@ -205,17 +250,20 @@ int setButtonFocus(GtkWidget *button, char *s)
 	GdkRGBA color;
 	gdk_rgba_parse(&color, s);
 	gtk_widget_override_background_color(GTK_WIDGET(button), GTK_STATE_NORMAL, &color);
+	// context = gtk_widget_get_style_context(button);
+	// gtk_style_context_add_class(context,DOWN);
+	return 0;
 }
 void addButtonToUserListBox(char n[][32], int count)
 {
 	int i = 0;
 	if (strcmp(PUBLIC, currentChannel) == 0)
 	{
-		setButtonFocus(publicChannelButton, "red");
+		setButtonFocus(publicChannelButton, DOWN);
 	}
 	else
-		setButtonFocus(publicChannelButton, "white");
-	for (int i = 0; i < count; ++i)
+		setButtonFocus(publicChannelButton, UP);
+	for (i = 0; i < count; ++i)
 	{
 		if (strcmp(n[i], you) != 0)
 		{
@@ -223,7 +271,7 @@ void addButtonToUserListBox(char n[][32], int count)
 			GtkWidget *userIndex = gtk_button_new_with_label(n[i]);
 			if (strcmp(n[i], currentChannel) == 0)
 			{
-				setButtonFocus(userIndex, "red");
+				setButtonFocus(userIndex, DOWN);
 			}
 			gtk_box_pack_end(GTK_BOX(userListBox), userIndex, TRUE, TRUE, 0);
 			g_signal_connect(userIndex, "clicked", G_CALLBACK(onChannelButtonClicked), n[i]);
@@ -235,14 +283,13 @@ void addButtonToUserListBox(char n[][32], int count)
 
 void updateUserList(char n[][32], int count)
 {
-	GList *childs = gtk_container_get_children(userListBox);
+	GList *childs = gtk_container_get_children(GTK_CONTAINER(userListBox));
 	g_list_foreach(childs, delFromUserBox, NULL);
 	addButtonToUserListBox(n, count);
 }
-GtkWidget *initUserList(int x, int y, char *names[], int amount)
+GtkWidget *initUserList(int x, int y, char names[][32], int amount)
 {
 	GtkWidget *userListGroupBox;
-	GtkWidget *userListScroller;
 
 	// Khoi tao List user groupbox
 	userListGroupBox = gtk_frame_new(ONLINE_LIST_LABEL);
@@ -292,5 +339,5 @@ void showMainWindow()
 		initMainWindow();
 	}
 	gtk_widget_show_all(window);
-	// gtk_main();
+	gtk_entry_grab_focus_without_selecting(GTK_ENTRY(messageInput));
 }

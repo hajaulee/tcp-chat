@@ -20,8 +20,10 @@ char *inBuf;
 char outBuf[4096];
 extern char onlineUsers[USER_NUM_MAX][32];
 extern int onlineUserCount;
+extern char *publicStream;
+extern GtkWidget *chatArea;
 extern void updateUserList(char n[][32], int);
-
+extern void textViewSetText(GtkWidget *, char *);
 void clearBuf(char *buff)
 {
     memset(buff, 0, MAXLINE);
@@ -31,30 +33,52 @@ int sendRequest()
     printf("Send to server :{%s}\n", inBuf);
     return send(client_sock_fd, inBuf, strlen(inBuf), 0);
 }
-int handleLoginResponse(char *message)
+char *splitMessage(char *message)
 {
     char *split = strchr(message, '#');
     *split = '\0';
-    char *value = message;
-    message = split + 1;
-    printf("value:%s\nmessage:%s\n", value, message);
+    return split + 1;
+}
+int handleLoginResponse(char *_message)
+{
+    char *value = _message;
+    _message = splitMessage(_message);
+    printf("value:%s\nmessage:%s\n", value, _message);
     if (strcmp(value, SUCCESS) == 0)
     {
-        if (strcmp(message, OK) == 0) // username Sent
+        if (strcmp(_message, OK) == 0) // username Sent
         {
             onSentUsername();
         }
         else //password sent
         {
-            onLoginSuccess(message);
+            onLoginSuccess(_message);
         }
     }
     else
     {
-        onLoginFailed(message);
+        onLoginFailed(_message);
     }
+    return 0;
 }
 
+int handlePrivateMessage(char *message)
+{
+    char *sender = message;
+    message = splitMessage(message);
+    return 0;
+}
+
+int handlePublicMessage(char *message)
+{
+    char *sender = message;
+    message = splitMessage(message);
+    char temp[MAXLINE];
+    sprintf(temp, "%s:%s\n", sender, message);
+    strcat(publicStream, temp);
+    textViewSetText(chatArea, publicStream);
+    return 0;
+}
 int handleOnlineUsersList(char *message)
 {
     int i, j = 0;
@@ -78,11 +102,20 @@ int handleOnlineUsersList(char *message)
     }
     printf("Count:%d", onlineUserCount);
     updateUserList(onlineUsers, onlineUserCount);
+    return messageLength;
+}
+
+void handleGetStream(char *message)
+{
+    printf("___________________%s______\n", message);
+    strcpy(publicStream, message);
+    strcat(publicStream, "\n");
+    // g_main_context_invoke(NULL, callTextViewSetText, NULL);
 }
 void handleReponse(char *buff, int n)
 {
     printf("Received form server:\"%s\"\n", buff);
-    char action, *message, *value;
+    char action, *message;
     buff[n] = 0;
     if (buff[strlen(buff) - 1] == '\n')
         buff[strlen(buff) - 1] = '\0';
@@ -96,6 +129,18 @@ void handleReponse(char *buff, int n)
         break;
     case GET_LIST_USER_ACTION:
         handleOnlineUsersList(message);
+        break;
+    case PRIVATE_MESSAGE_ACTION:
+        handlePrivateMessage(message);
+        break;
+    case CHANNEL_MESSAGE_ACTION:
+        handlePublicMessage(message);
+        break;
+    case GET_PUBLIC_STREAM:
+        if (strlen(message) > 1)
+        {
+            handleGetStream(message);
+        }
         break;
     }
 }
@@ -113,11 +158,16 @@ void signio_handler(int signo)
         puts("Error!!!!!");
     }
 }
+
+void signal_SIGABRT(int signal)
+{
+    printf("SIGABRT\n");
+}
 int createClient()
 {
 
     inBuf = (char *)malloc(MAXLINE * sizeof(char));
-    struct sockaddr_in client_socket;
+    // struct sockaddr_in client_socket;
     struct sockaddr_in server_socket;
     client_sock_fd = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -136,8 +186,9 @@ int createClient()
         printf("Error in setting socket to async, nonblock mode");
 
     signal(SIGIO, signio_handler); // assign SIGIO to the handler
-
+    signal(SIGABRT, signal_SIGABRT);
     // set this process to be the process owner for SIGIO signal
     if (fcntl(client_sock_fd, F_SETOWN, getpid()) < 0)
         printf("Error in setting own to socket");
+    return 0;
 }

@@ -4,11 +4,13 @@
 #include "string-constant.h"
 #include "integer-constant.h"
 
+#define runInUIThread(x) gdk_threads_enter(); x; gdk_threads_leave();
+
 extern GtkWidget *window;
 extern GtkWidget *frame;
 extern GtkWidget *userListBox;
 extern char *inBuf;
-extern GtkWidget *initUserList(int, int, char *[], int);
+extern GtkWidget *initUserList(int, int, char[][32], int);
 extern void addButtonToUserListBox(char[][32], int);
 extern void sendThread(char *);
 extern GtkWidget *loginDialog;
@@ -26,8 +28,8 @@ extern int sendRequest();
 extern void showLoginDialog();
 extern void showMessage(GtkWidget *, GtkMessageType, char *, char *);
 extern void showMainWindow();
-extern void updateUserList(char [][32], int);
-extern int setButtonFocus(GtkWidget*, char*);
+extern void updateUserList(char[][32], int);
+extern int setButtonFocus(GtkWidget *, char *);
 char username[100];
 char password[100];
 
@@ -45,11 +47,16 @@ void onLoginSuccess(char *message)
 {
 	//success
 	you = username;
-	showMessage(loginDialog, GTK_MESSAGE_WARNING, LOGIN_SUCCESS, message);
-	gtk_entry_set_text(GTK_ENTRY(inputPassword), BLANK);
-	gtk_widget_hide(loginDialog);
-	showMainWindow();
+	runInUIThread( showMessage(loginDialog, GTK_MESSAGE_WARNING, LOGIN_SUCCESS, WELLCOME));
+	runInUIThread(gtk_entry_set_text(GTK_ENTRY(inputPassword), BLANK));
+	runInUIThread(showMainWindow());
+	gtk_widget_set_visible(loginDialog, FALSE);
 	gtk_label_set_text(GTK_LABEL(yournameLabel), username);
+	clearBuf(inBuf);
+	sprintf(inBuf, "%c", GET_PUBLIC_STREAM);
+	sendRequest();
+
+	// g_mutex_unlock(&mutex_interface);
 }
 
 void onForceLogout(char *message)
@@ -71,8 +78,8 @@ void onLoginFailed(char *message)
 }
 void onLoginButtonClicked(GtkWidget *widget, gpointer gp)
 {
-	strcpy(username, (char*)gtk_entry_get_text(GTK_ENTRY(inputUsername)));
-	strcpy(password, (char*)gtk_entry_get_text(GTK_ENTRY(inputPassword)));
+	strcpy(username, (char *)gtk_entry_get_text(GTK_ENTRY(inputUsername)));
+	strcpy(password, (char *)gtk_entry_get_text(GTK_ENTRY(inputPassword)));
 
 	if (strlen(username) < 1 || strlen(password) < 1)
 		showMessage(loginDialog, GTK_MESSAGE_WARNING, LOGIN_FAILED, NOT_EMPTY);
@@ -89,7 +96,7 @@ void onChannelButtonClicked(GtkWidget *widget, gpointer data)
 	currentChannel = (char *)data;
 	updateUserList(onlineUsers, onlineUserCount);
 	if (strcmp(currentChannel, PUBLIC) == 0)
-		setButtonFocus(publicChannelButton, "red");
+		setButtonFocus(publicChannelButton, DOWN);
 	showMessage(window, GTK_MESSAGE_INFO, "haha", currentChannel);
 }
 
@@ -101,7 +108,8 @@ void onSendButtonClicked(GtkWidget *widget, gpointer data)
 {
 	clearBuf(inBuf);
 	char text[100];
-	strcpy(text, (char*)gtk_entry_get_text(GTK_ENTRY (messageInput)));
+	strcpy(text, (char *)gtk_entry_get_text(GTK_ENTRY(messageInput)));
+	gtk_entry_set_text(GTK_ENTRY(messageInput), BLANK);
 	if (strcmp(currentChannel, PUBLIC) == 0)
 		sprintf(inBuf, "%c%s", CHANNEL_MESSAGE_ACTION, text);
 	else

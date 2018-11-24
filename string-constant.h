@@ -32,8 +32,12 @@
 #define GET_LIST_USER_ACTION 'L'
 #define PRIVATE_MESSAGE_ACTION 'M'
 #define CHANNEL_MESSAGE_ACTION 'C'
+#define GET_PUBLIC_STREAM 'S'
 #define LOGOUT_ACTION 'O'
 #define SEPARATOR ','
 #define SUCCESS "success"
 #define FAILED "failed"
 #define OK "OK"
+
+#define DOWN "yellow"
+#define UP "white"

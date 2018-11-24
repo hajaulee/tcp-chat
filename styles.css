@@ -1,11 +1,11 @@
 .enter_button{
-    background: #669999;
-    text-shadow: 1px 1px 5px black;
+    background: #0000ff;
+    /* text-shadow: 1px 1px 5px black;
     border-radius: 3px;
-    box-shadow: 0px 0px 5px black;
+    box-shadow: 0px 0px 5px black; */
 }
 
 .normal_button{
-
+    background-color: #ffffff;
 }
 

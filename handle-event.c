@@ -8,10 +8,7 @@
 	gdk_threads_enter(); \
 	x;                   \
 	gdk_threads_leave();
-#define runOnUIThread(cc) \
-	gdk_threads_enter();  \
-	cc;                   \
-	puts("heleo");
+
 extern GtkWidget *window;
 extern GtkWidget *frame;
 extern GtkWidget *userListBox;
@@ -80,9 +77,7 @@ void onSentUsername()
 void onLoginFailed(char *message)
 {
 	//invalid
-	runInUIThread(gtk_widget_set_visible(loginDialog, FALSE);
-				  showMessage(loginDialog, GTK_MESSAGE_ERROR, LOGIN_FAILED, message);
-				  gtk_widget_set_visible(loginDialog, TRUE));
+	runInUIThread(showMessage(loginDialog, GTK_MESSAGE_ERROR, LOGIN_FAILED, message));
 	// showMessage(loginDialog, GTK_MESSAGE_ERROR, LOGIN_FAILED, message);
 }
 void onLoginButtonClicked(GtkWidget *widget, gpointer gp)

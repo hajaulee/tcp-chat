@@ -15,7 +15,7 @@
 #include "integer-constant.h"
 #include "string-constant.h"
 
-int client_sock_fd;
+int client_sock_fd, wait = 9;
 char *inBuf;
 char outBuf[4096];
 extern char onlineUsers[USER_NUM_MAX][32];
@@ -89,21 +89,14 @@ int handleOnlineUsersList(char *message)
     onlineUserCount = 0;
     for (i = 0; i < messageLength; i++)
     {
-        printf("i=%d\n", i);
         if (message[i] == SEPARATOR)
         {
             message[i] = '\0';
             strcpy(onlineUsers[onlineUserCount], message + j);
-            printf(">>>%s<<<\n", onlineUsers[onlineUserCount]);
             j = i + 1;
             onlineUserCount++;
-            printf("\n>>%d\n", onlineUserCount);
         }
-        if (message[i + 1] == '\0')
-            break;
-        printf("%c", message[i]);
     }
-    printf("Count:%d", onlineUserCount);
     updateUserList(onlineUsers, onlineUserCount);
     return messageLength;
 }
@@ -113,13 +106,14 @@ void handleGetStream(char *message)
     printf("___________________%s______\n", message);
     strcpy(publicStream, message);
     strcat(publicStream, "\n");
-    // g_main_context_invoke(NULL, callTextViewSetText, NULL);
+    textViewSetText(chatArea, publicStream);
 }
 void handleReponse(char *buff, int n)
 {
-    printf("Received form server:\"%s\"\n", buff);
+
+    buff[n] = '\0';
+    printf("Received form server:\"{%s}{length:%d}\"\n", buff, n);
     char action, *message;
-    buff[n] = 0;
     if (buff[strlen(buff) - 1] == '\n')
         buff[strlen(buff) - 1] = '\0';
     action = buff[0];
@@ -140,6 +134,7 @@ void handleReponse(char *buff, int n)
         handlePublicMessage(message);
         break;
     case GET_PUBLIC_STREAM:
+        printf(">><<\n", strlen(message));
         if (strlen(message) > 1)
         {
             handleGetStream(message);
@@ -158,10 +153,21 @@ void signio_handler(int signo)
     }
     else
     {
-        puts("Error!!!!!");
+        if((wait+=3) <= 12)
+            printf("\rWaiting for response.  ");
+        else if (wait <= 24)
+            printf("\rWaiting for response.. ");
+        else{
+            wait = 0;
+            printf("\rWaiting for response...");
+        }
     }
 }
 
+gboolean timer_exe(gpointer p){
+    signio_handler(0);
+    return TRUE;
+}
 void signal_SIGABRT(int signal)
 {
     printf("SIGABRT\n");
@@ -185,10 +191,11 @@ int createClient()
         printf("connected to server\n");
 
     // Signal driven I/O mode and NONBlOCK mode so that recv will not block
-    if (fcntl(client_sock_fd, F_SETFL, O_NONBLOCK | O_ASYNC))
+    // if (fcntl(client_sock_fd, F_SETFL, O_NONBLOCK | O_ASYNC))
+    if (fcntl(client_sock_fd, F_SETFL, O_NONBLOCK))
         printf("Error in setting socket to async, nonblock mode");
 
-    signal(SIGIO, signio_handler); // assign SIGIO to the handler
+    // signal(SIGIO, signio_handler); // assign SIGIO to the handler
     signal(SIGABRT, signal_SIGABRT);
     // set this process to be the process owner for SIGIO signal
     if (fcntl(client_sock_fd, F_SETOWN, getpid()) < 0)

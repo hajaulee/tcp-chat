@@ -9,12 +9,28 @@ sudo apt-get install libgtk-3-dev
 2. Complie:
 ```
 make
+
+or complile with all warning
+
+make w
 ```
-3. Run:
+3. Run server:
+```
+make server
+
+or 
+
+make s
+```
+4. Run client
 ```
 make run
+
+or for debug by gdb
+
+make debug
 ```
-4. Clear output file:
+5. Clear output file:
 ```
 make clean
 ```

@@ -268,7 +268,8 @@ void addButtonToUserListBox(char n[][32], int count)
 	{
 		if (strcmp(n[i], you) != 0)
 		{
-			printf(">>>>>{{{%s}}}\n", n[i]);
+			puts("\t|");
+			printf("\t+--->{%s}{%s}\n", n[i], you);
 			GtkWidget *userIndex = gtk_button_new_with_label(n[i]);
 			if (strcmp(n[i], currentChannel) == 0)
 			{

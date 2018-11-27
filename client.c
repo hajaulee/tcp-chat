@@ -18,6 +18,9 @@
 int client_sock_fd, wait = 9;
 char *inBuf;
 char outBuf[4096];
+GMutex queueMutex;
+char *bufferQueue[USER_NUM_MAX];
+int queueSize = 0;
 extern char onlineUsers[USER_NUM_MAX][32];
 extern int onlineUserCount;
 extern char *publicStream;
@@ -25,14 +28,46 @@ extern GtkWidget *chatArea;
 extern void updateUserList(char n[][32], int);
 extern void textViewSetText(GtkWidget *, char *);
 extern char *currentChannel;
+
+char *push(char *str)
+{
+    g_mutex_lock(&queueMutex);
+    bufferQueue[queueSize] = strdup(str);
+    puts("[PUSH]<===============================");
+    puts(str);
+    puts("<=====================================");
+    queueSize++;
+    g_mutex_unlock(&queueMutex);
+    return bufferQueue[queueSize];
+}
+
+int pop(char *str)
+{
+    g_mutex_lock(&queueMutex);
+    int current = queueSize;
+    if (queueSize > 0)
+    {
+        queueSize--;
+        strcpy(str, bufferQueue[queueSize]);
+        puts("[POP]================================>");
+        puts(str);
+        puts("=====================================>");
+        free(bufferQueue[queueSize]);
+    }
+    g_mutex_unlock(&queueMutex);
+    return current;
+}
 void clearBuf(char *buff)
 {
     memset(buff, 0, MAXLINE);
 }
 int sendRequest()
 {
-    printf("Send to server :{%s}\n", inBuf);
-    return send(client_sock_fd, inBuf, strlen(inBuf), 0);
+    int n = strlen(inBuf);
+    puts("\t|");
+    printf("\t+--->Send to server :{%s}\n", inBuf);
+    printf("\n--------------->Sent %d bytes:<-----------------\n\n", n);
+    return send(client_sock_fd, inBuf, n, 0);
 }
 char *splitMessage(char *message)
 {
@@ -77,7 +112,8 @@ int handlePublicMessage(char *message)
     char temp[MAXLINE];
     sprintf(temp, "%s:%s\n", sender, message);
     strcat(publicStream, temp);
-    if (strcmp(currentChannel, PUBLIC) == 0){
+    if (strcmp(currentChannel, PUBLIC) == 0)
+    {
         textViewSetText(chatArea, publicStream);
     }
     return 0;
@@ -103,7 +139,6 @@ int handleOnlineUsersList(char *message)
 
 void handleGetStream(char *message)
 {
-    printf("___________________%s______\n", message);
     strcpy(publicStream, message);
     strcat(publicStream, "\n");
     textViewSetText(chatArea, publicStream);
@@ -112,7 +147,8 @@ void handleReponse(char *buff, int n)
 {
 
     buff[n] = '\0';
-    printf("Received form server:\"{%s}{length:%d}\"\n", buff, n);
+    // printf("Received form server:\"{%s}{length:%d}\"\n", buff, n);
+    printf("\n------------->Received %d bytes:<--------------\n\n", n);
     char action, *message;
     if (buff[strlen(buff) - 1] == '\n')
         buff[strlen(buff) - 1] = '\0';
@@ -149,23 +185,29 @@ void signio_handler(int signo)
     int n = recv(client_sock_fd, buffer, MAXLINE, 0);
     if (n > 0)
     {
-        handleReponse(buffer, n);
+        //handleReponse(buffer, n);
+        buffer[n] = '\0';
+        push(buffer);
     }
     else
     {
-        if((wait+=3) <= 12)
+        if ((wait += 3) <= 12)
             printf("\rWaiting for response.  ");
         else if (wait <= 24)
             printf("\rWaiting for response.. ");
-        else{
+        else
+        {
             wait = 0;
             printf("\rWaiting for response...");
         }
     }
 }
 
-gboolean timer_exe(gpointer p){
-    signio_handler(0);
+gboolean timer_exe(gpointer p)
+{
+    char newBuffer[MAXLINE];
+    if (pop(newBuffer) > 0)
+        handleReponse(newBuffer, strlen(newBuffer));
     return TRUE;
 }
 void signal_SIGABRT(int signal)
@@ -191,11 +233,11 @@ int createClient()
         printf("connected to server\n");
 
     // Signal driven I/O mode and NONBlOCK mode so that recv will not block
-    // if (fcntl(client_sock_fd, F_SETFL, O_NONBLOCK | O_ASYNC))
-    if (fcntl(client_sock_fd, F_SETFL, O_NONBLOCK))
+    if (fcntl(client_sock_fd, F_SETFL, O_NONBLOCK | O_ASYNC))
+        // if (fcntl(client_sock_fd, F_SETFL, O_NONBLOCK))
         printf("Error in setting socket to async, nonblock mode");
 
-    // signal(SIGIO, signio_handler); // assign SIGIO to the handler
+    signal(SIGIO, signio_handler); // assign SIGIO to the handler
     signal(SIGABRT, signal_SIGABRT);
     // set this process to be the process owner for SIGIO signal
     if (fcntl(client_sock_fd, F_SETOWN, getpid()) < 0)

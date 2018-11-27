@@ -51,7 +51,6 @@ void onLogoutButtonClicked(GtkWidget *widget, gpointer *data)
 void onLoginSuccess(char *message)
 {
 	//success
-	you = username;
 	runInUIThread(showMessage(loginDialog, GTK_MESSAGE_WARNING, LOGIN_SUCCESS, WELLCOME));
 	runInUIThread(gtk_entry_set_text(GTK_ENTRY(inputPassword), BLANK));
 	runInUIThread(showMainWindow());
@@ -70,6 +69,7 @@ void onForceLogout(char *message)
 }
 void onSentUsername()
 {
+	you = username;
 	clearBuf(inBuf);
 	sprintf(inBuf, "%c%s", SEND_PASSWORD_ACTION, password);
 	sendRequest();

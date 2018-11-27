@@ -404,7 +404,6 @@ int createServer()
                         }
                         if (auth[i] != -1)
                             handleUserLogout(i);
-                        broadcastOnlineUsers();
                         close(i);           // bye!
                         FD_CLR(i, &master); // remove from master set
                         auth[i] = -1;

@@ -1,5 +1,0 @@
-hau 12345
-hai 2345
-trung 2222
-anh 11111
-ka cccc

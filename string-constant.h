@@ -38,6 +38,7 @@
 #define SUCCESS "success"
 #define FAILED "failed"
 #define OK "OK"
+#define BRACKET '('
 
 #define DOWN "yellow"
 #define UP "white"

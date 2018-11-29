@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "string-constant.h"
 #include "integer-constant.h"
+#include "client.c"
 
 #define runInUIThread(x) \
 	gdk_threads_enter(); \
@@ -32,17 +33,31 @@ extern void clearBuf(char *);
 extern int sendRequest();
 extern void showLoginDialog();
 extern void showMessage(GtkWidget *, GtkMessageType, char *, char *);
+extern char * saveToUserMessageStream(char *, char *);
 extern void showMainWindow();
 extern void updateUserList(char[][32], int);
 extern int setButtonFocus(GtkWidget *, char *);
+extern int findUserMessageStream(char * );
+extern User onlineUsersStream[USER_NUM_MAX];
 char username[100];
 char password[100];
 
+void clearStreamList(){
+	int i; 
+	for(i = 0; i < USER_NUM_MAX; i++){
+		if(strlen(onlineUsersStream[i].username) > 0){
+			memset(onlineUsersStream[i].username, 0, strlen(onlineUsersStream[i].username));
+			free(onlineUsersStream[i].stream);
+		}
+	}
+}
 void onLogoutButtonClicked(GtkWidget *widget, gpointer *data)
 {
 	// destroySomething(NULL, window);
 	gtk_widget_hide(window);
 	clearBuf(inBuf);
+	clearStreamList();
+	currentChannel = PUBLIC;
 	sprintf(inBuf, "%c", LOGOUT_ACTION);
 	sendRequest();
 	showLoginDialog();
@@ -61,12 +76,6 @@ void onLoginSuccess(char *message)
 	sendRequest();
 }
 
-void onForceLogout(char *message)
-{
-	gtk_widget_hide(window);
-	showLoginDialog();
-	showMessage(loginDialog, GTK_MESSAGE_WARNING, FORCE_LOGOUT, message);
-}
 void onSentUsername()
 {
 	you = username;
@@ -98,14 +107,25 @@ void onLoginButtonClicked(GtkWidget *widget, gpointer gp)
 void onChannelButtonClicked(GtkWidget *widget, gpointer data)
 {
 	currentChannel = (char *)data;
+	char * x = strchr(currentChannel, BRACKET);
+	if (x != NULL)
+	{
+		*x = '\0'; // Remove message count from user name example: hau(2) => hau
+	}
 	updateUserList(onlineUsers, onlineUserCount);
 	if (strcmp(currentChannel, PUBLIC) == 0)
 	{
 		printf("setButtonFocus\n");
 		setButtonFocus(publicChannelButton, DOWN);
 		textViewSetText(chatArea, publicStream);
+	}else{
+		int id = findUserMessageStream(currentChannel);
+		if (id != -1)
+		{
+			textViewSetText(chatArea, onlineUsersStream[id].stream);
+		}
 	}
-	showMessage(window, GTK_MESSAGE_INFO, "haha", currentChannel);
+	// showMessage(window, GTK_MESSAGE_INFO, "haha", currentChannel);
 }
 
 void onExit(GtkWidget *widget, gpointer data)
@@ -122,7 +142,13 @@ void onSendButtonClicked(GtkWidget *widget, gpointer data)
 	gtk_entry_set_text(GTK_ENTRY(messageInput), BLANK);
 	if (strcmp(currentChannel, PUBLIC) == 0)
 		sprintf(inBuf, "%c%s", CHANNEL_MESSAGE_ACTION, text);
-	else
+	else{
+		char temp [MAXLINE];
+		sprintf(temp, "%s:%s", you, text);
+		char * xstream = saveToUserMessageStream(currentChannel, temp);
+		printf("%s\n", xstream);
+		textViewSetText(chatArea, xstream);
 		sprintf(inBuf, "%c%s#%s", PRIVATE_MESSAGE_ACTION, currentChannel, text);
+	}
 	sendRequest();
 }

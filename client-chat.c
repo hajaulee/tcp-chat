@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include "string-constant.h"
 #include "gui-design.c"
-#include "client.c"
+
+
 GtkWidget *window = NULL;
 GtkWidget *frame;
 GtkWidget *chatArea;
@@ -12,13 +13,16 @@ GtkWidget *messageInput;
 char *you = "abc";
 char *currentChannel = PUBLIC;
 char onlineUsers[USER_NUM_MAX][32];
-char *messageStream[USER_NUM_MAX];
+User onlineUsersStream[USER_NUM_MAX];
 char *publicStream;
 int onlineUserCount = 0;
-// void * timer_exe(gpointer);
+
+
 int main(int argc, char *argv[])
 {
 
+	//clear messageStream
+	memset(onlineUsersStream, 0, USER_NUM_MAX * sizeof(User));
 	//to be thread-aware
     if (!g_thread_supported ()){ g_thread_init(NULL); }
 	// initialize GDK thread support

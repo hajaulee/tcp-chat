@@ -165,9 +165,11 @@ void textViewSetText(GtkWidget *textView, char *text)
 		gtk_text_buffer_get_end_iter(t_buffer, &end);
 		x = gtk_text_buffer_get_text(t_buffer, &start, &end, TRUE);
 		q = strchr(x, ':');
-		gtk_text_buffer_get_iter_at_line_index(t_buffer, &end, i, q - x);
-
-		gtk_text_buffer_apply_tag(t_buffer, tag, &start, &end);
+		if (q > x &&  q < x + strlen(x))
+		{
+			gtk_text_buffer_get_iter_at_line_index(t_buffer, &end, i, q - x);
+			gtk_text_buffer_apply_tag(t_buffer, tag, &start, &end);
+		}
 	}
 
 	gtk_text_view_set_buffer(GTK_TEXT_VIEW(textView), t_buffer);
@@ -176,13 +178,6 @@ void textViewSetText(GtkWidget *textView, char *text)
 	gtk_scrolled_window_set_vadjustment(GTK_SCROLLED_WINDOW(chatOutputScroller), adj);
 }
 
-int callTextViewSetText(gpointer data)
-{
-	g_mutex_lock(&mutex_interface);
-	textViewSetText(chatArea, publicStream);
-	g_mutex_unlock(&mutex_interface);
-	return 0;
-}
 GtkWidget *initChatArea(int x, int y)
 {
 	GtkWidget *outputBox;

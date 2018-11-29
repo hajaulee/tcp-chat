@@ -14,6 +14,8 @@
 #include <netdb.h>
 #include "integer-constant.h"
 #include "string-constant.h"
+#include "data.h"
+
 
 int client_sock_fd, wait = 9;
 char *inBuf;
@@ -28,7 +30,7 @@ extern GtkWidget *chatArea;
 extern void updateUserList(char n[][32], int);
 extern void textViewSetText(GtkWidget *, char *);
 extern char *currentChannel;
-
+extern User onlineUsersStream[USER_NUM_MAX];
 char *push(char *str)
 {
     g_mutex_lock(&queueMutex);
@@ -41,6 +43,15 @@ char *push(char *str)
     return bufferQueue[queueSize];
 }
 
+char * getStream(char *channel){
+    int i = 0;
+    for(;i < USER_NUM_MAX; i++){
+        if(strcmp(channel, onlineUsersStream[i].username) == 0){
+            return onlineUsersStream[i].stream;
+        }
+    }
+    return NULL;
+}
 int pop(char *str)
 {
     g_mutex_lock(&queueMutex);
@@ -59,7 +70,7 @@ int pop(char *str)
 }
 void clearBuf(char *buff)
 {
-    memset(buff, 0, MAXLINE);
+    memset(buff, 0, strlen(buff));
 }
 int sendRequest()
 {
@@ -98,12 +109,89 @@ int handleLoginResponse(char *_message)
     return 0;
 }
 
+char * saveToUserMessageStream(char * sender, char * message){
+    int i, found = 0;
+    char temp[MAXLINE];
+    for (i = 0; i< USER_NUM_MAX; i++){
+        if(strcmp(onlineUsersStream[i].username, sender) == 0){ // user found
+            printf("Find user at %d\n", i);
+            printf("Current stream: %s\n", onlineUsersStream[i].stream);
+            found = 1;
+        }else if(onlineUsersStream[i].username[0] == '\0'){ //user not found, create new
+            printf("User not found created at %d\n", i);
+            strcpy(onlineUsersStream[i].username, sender);
+            onlineUsersStream[i].stream = (char *)calloc(69 * MAXLINE , sizeof(char));
+            found = 1;
+        }
+        if (found)
+        {
+            sprintf(temp, "%s\n", message);
+            strcat(onlineUsersStream[i].stream, temp);
+            return onlineUsersStream[i].stream;
+        }
+    }
+    return sender;
+}
+
+int findUserMessageStream(char * sender){
+    int i, found = 0;
+    for (i = 0; i< USER_NUM_MAX; i++){
+        if(strcmp(onlineUsersStream[i].username, sender) == 0){ // user found
+            printf("Find user at %d\n", i);
+            printf("Current stream: %s\n", onlineUsersStream[i].stream);
+            found = 1;
+        }else if(onlineUsersStream[i].username[0] == '\0'){ //user not found, create new
+            printf("User not found created at %d\n", i);
+            strcpy(onlineUsersStream[i].username, sender);
+            onlineUsersStream[i].stream = (char *)calloc(69 * MAXLINE, sizeof (char));
+            found = 1;
+        }
+
+        if (found)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int notifyMessageCount(char * sender){
+    int i, count = 0;
+    char name[32];
+        
+    for(i = 0; i< onlineUserCount; i++){
+        sscanf(onlineUsers[i], "%[^(](%d", name, &count);{
+            if (strcmp(name, sender) == 0)
+            {
+                sprintf(onlineUsers[i], "%s(%d)", name, count+1);
+                int id = findUserMessageStream(name);
+                if (id != -1)
+                {
+                    onlineUsersStream[i].newMessage = count+1;
+                }
+                break;
+            }
+        }
+    }
+    updateUserList(onlineUsers, onlineUserCount);
+}
+
 int handlePrivateMessage(char *message)
 {
     char *sender = message;
     message = splitMessage(message);
+    char temp[MAXLINE];
+    sprintf(temp, "%s:%s", sender, message);
+    char * xstream =  saveToUserMessageStream(sender, temp);
+    if (strcmp(currentChannel, sender) == 0)
+    {
+        textViewSetText(chatArea, xstream);
+    }else{
+        notifyMessageCount(sender);
+    }
     return 0;
 }
+
 
 int handlePublicMessage(char *message)
 {
@@ -129,6 +217,16 @@ int handleOnlineUsersList(char *message)
         {
             message[i] = '\0';
             strcpy(onlineUsers[onlineUserCount], message + j);
+            int id = findUserMessageStream(onlineUsers[onlineUserCount]);
+            if (id != -1)
+            {
+                if (onlineUsersStream[id].newMessage)
+                {
+                    char temp[10];
+                    sprintf(temp, "(%d)", onlineUsersStream[id].newMessage);
+                    strcat(onlineUsers[onlineUserCount], temp);
+                }
+            }
             j = i + 1;
             onlineUserCount++;
         }

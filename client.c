@@ -31,6 +31,8 @@ extern void updateUserList(char n[][32], int);
 extern void textViewSetText(GtkWidget *, char *);
 extern char *currentChannel;
 extern User onlineUsersStream[USER_NUM_MAX];
+extern char * you;
+extern void *showBubbleNotify(void *);
 char *push(char *str)
 {
     g_mutex_lock(&queueMutex);
@@ -204,6 +206,11 @@ int handlePublicMessage(char *message)
     {
         textViewSetText(chatArea, publicStream);
     }
+    sprintf(temp, "@%s", you);
+    if (strstr(message, temp))
+    {
+        onUserTagged(sender);
+    }
     return 0;
 }
 int handleOnlineUsersList(char *message)
@@ -327,8 +334,11 @@ int createClient()
     server_socket.sin_addr.s_addr = inet_addr("127.0.0.1");
     printf("server IP = %s ", inet_ntoa(server_socket.sin_addr));
 
-    if (connect(client_sock_fd, (struct sockaddr *)&server_socket, sizeof(server_socket)) < 0)
-        printf("Error in connecting to server\n");
+    if (connect(client_sock_fd, (struct sockaddr *)&server_socket, sizeof(server_socket)) < 0){
+        char * errorMessage = "Error in connecting to server\n";
+        printf(errorMessage);
+        showBubbleNotify(errorMessage);
+    }
     else
         printf("connected to server\n");
 

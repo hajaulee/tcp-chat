@@ -3,12 +3,12 @@ default: main
 main:
 	clear 
 	gcc -w -g -o client client-chat.c -lgthread-2.0 `pkg-config gtk+-3.0 --cflags --libs`
-	gcc -o server server.c -g -w -pthread
+	gcc -o server server.c -g -w -pthread -lcrypt
 
 w:
 	clear 
 	gcc -Wall -g -o client client-chat.c -lgthread-2.0 `pkg-config gtk+-3.0 --cflags --libs`
-	gcc -o server server.c -g -Wall -pthread
+	gcc -o server server.c -g -Wall -pthread -lcrypt
 
 run: main
 	./client 

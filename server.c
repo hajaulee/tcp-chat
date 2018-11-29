@@ -9,7 +9,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <pthread.h>
-
+#include <crypt.h>
 #include "integer-constant.h"
 #include "string-constant.h"
 
@@ -113,11 +113,12 @@ int markUserLogged(int fdnum, int userId)
 
 int validatePassword(int fdnum, char *password)
 {
+    char *encrypt = crypt(password, "salt");
     if (auth[fdnum] < 0)
     {
         User u = users[-1 - auth[fdnum]];
         printf("\n{\n  username:%s,\n  password:%s,\n  input_password:%s,\n  socket:%d\n}\n", u.username, u.password, password, u.fd);
-        if (strcmp(u.password, password) == 0)
+        if (strcmp(u.password, encrypt) == 0)
         {
             if (u.fd != 0)
                 return CODE_LOGGED_BY_ANOTHER;
@@ -125,6 +126,7 @@ int validatePassword(int fdnum, char *password)
             return -1 - auth[fdnum];
         }
     }
+    // free(encrypt);
     return CODE_PASSWORD_INCORRECT;
 }
 int initAuth()

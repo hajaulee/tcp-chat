@@ -25,6 +25,7 @@
 #define WELLCOME "Chào mừng bạn đến với phần mềm chat của chúng tôi"
 #define LOGOUT "Đăng xuất"
 #define NOT_EMPTY "Không được để trống tài khoản hoặc mật khẩu!"
+#define TAGGED_NOTIFY "Bạn vừa được %s nhắc tới trong phòng chat công khai."
 #define BLANK ""
 #define SEND_USER_ACTION 'U'
 #define SEND_PASSWORD_ACTION 'P'

@@ -76,6 +76,17 @@ void onLoginSuccess(char *message)
 	sendRequest();
 }
 
+void *showBubbleNotify(void *notify){	
+	char command[200];
+	sprintf(command, "notify-send \"%s\"", notify);
+	system(command);
+}
+void onUserTagged(char * sender){
+	char notify[69];
+	sprintf(notify, TAGGED_NOTIFY, sender);
+	showBubbleNotify(notify);
+}
+
 void onSentUsername()
 {
 	you = username;

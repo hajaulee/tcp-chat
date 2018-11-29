@@ -27,11 +27,11 @@ int auth[USER_NUM_MAX];
 
 int sendResponse(int connfd)
 {
-    printf("Send to client:[%s]\n", buf);
-    if (buf[strlen(buf) -1] != ACKc)
+    if (strstr(buf, ACK) == NULL)
     {
         strcat(buf, ACK);
     }
+    printf("Send to client socket %d:[%s\b]\n",connfd, buf);
     return send(connfd, buf, strlen(buf), 0);
 }
 int broadCast()
@@ -66,7 +66,7 @@ int checkUser(char *name)
 int getOnlineUsers(char *list)
 {
     int i;
-    printf("\n[");
+    printf("\nOnline user list: [");
     for (i = 0; i < USER_NUM_MAX; ++i)
     {
         if (users[i].fd != NONE_SOCKET)
@@ -155,7 +155,7 @@ int loadUserList(const char *source)
     for (i = 0; fgets(temp, 200, f) != NULL; i++)
     {
         sscanf(temp, "%s %s", users[i].username, users[i].password);
-        printf("User:{\n  username:\"%s\"\n  password:\"%s\"\n}\n", users[i].username, users[i].password);
+        // printf("User:{\n  username:\"%s\"\n  password:\"%s\"\n}\n", users[i].username, users[i].password);
     }
     return i;
 }
@@ -337,7 +337,7 @@ int createServer()
 
     if (bind(listenfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) >= 0)
     {
-        puts("Server address is maybe:");
+        puts("Server address is one of:");
         system("ifconfig | perl -nle'/dr:(\\S+)/ && print $1'");
         printf("Server is running at port %d\n", SERV_PORT);
     }

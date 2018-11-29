@@ -180,6 +180,8 @@ int handleUserSendUsername(char *message, int connfd)
     sendResponse(connfd);
     return userId;
 }
+
+
 int handleUserSendPassword(char *message, int connfd)
 {
     int userId = validatePassword(connfd, message);
@@ -193,11 +195,6 @@ int handleUserSendPassword(char *message, int connfd)
         // user login
         if (userId == CODE_LOGGED_BY_ANOTHER) // Account are Already logged by other client
         {
-            // sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, SESSION_INVALID);
-            // userId = -1 - auth[connfd]; // Get logged user Id
-            // User u = users[userId];
-            // sendResponse(u.fd); // send message to logged User for loggout
-            // u.fd = connfd;      // update new socket
             cleanBuffer();
             sprintf(buf, "%c%s#%s", LOGIN_RESPONSE_ACTION, FAILED, SESSION_INVALID);
         }
@@ -216,12 +213,12 @@ int handleUserSendPassword(char *message, int connfd)
 void handlePublicMessage(int connfd, char *message)
 {
     char temp[MAXLINE];
-    if (connfd == -1)
+    if (connfd == -1)// Server send
     {
         sprintf(temp, "%s:%s\n", ">", message);
         sprintf(buf, "%c%s#%s", CHANNEL_MESSAGE_ACTION, ">", message);
     }
-    else
+    else //  Forward user's messsage
     {
         sprintf(temp, "%s:%s\n", users[auth[connfd]].username , message);
 
@@ -309,6 +306,7 @@ int handleMessage(int connfd)
             break;
         default:
             puts("\n--------------------UNKNOW ACTION-----------------");
+            printf("Send to socket:%d\n", connfd);
         }
     }
     return n;

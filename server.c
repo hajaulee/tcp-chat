@@ -27,8 +27,11 @@ int auth[USER_NUM_MAX];
 
 int sendResponse(int connfd)
 {
-    printf("Send to client:{%s}\n", buf);
-    strcat(buf, ACK);
+    printf("Send to client:[%s]\n", buf);
+    if (buf[strlen(buf) -1] != ACKc)
+    {
+        strcat(buf, ACK);
+    }
     return send(connfd, buf, strlen(buf), 0);
 }
 int broadCast()

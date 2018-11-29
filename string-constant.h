@@ -39,6 +39,7 @@
 #define FAILED "failed"
 #define OK "OK"
 #define BRACKET '('
+#define ACK "\6"
 
 #define DOWN "yellow"
 #define UP "white"

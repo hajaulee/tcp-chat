@@ -278,26 +278,28 @@ void handleReponse(char *buff, int n)
 }
 void signio_handler(int signo)
 {
-    char buffer[4096];
+    char buffer[MAXLINE];
     clearBuf(buffer);
+    char * ackIndex, * bufferStart;
     int n = recv(client_sock_fd, buffer, MAXLINE, 0);
     if (n > 0)
     {
-        //handleReponse(buffer, n);
-        buffer[n] = '\0';
-        push(buffer);
+        bufferStart = buffer;
+        char * end = bufferStart + strlen(bufferStart);
+        do{
+            ackIndex = strstr(bufferStart, ACK);
+            if (ackIndex != NULL)
+            {   
+                *ackIndex = '\0';
+                push(bufferStart);
+                bufferStart = ackIndex+1;
+            }
+        }while(ackIndex != NULL && bufferStart < end);
+        
     }
     else
     {
-        if ((wait += 3) <= 12)
-            printf("\rWaiting for response.  ");
-        else if (wait <= 24)
-            printf("\rWaiting for response.. ");
-        else
-        {
-            wait = 0;
-            printf("\rWaiting for response...");
-        }
+        puts("Error");
     }
 }
 

@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 	gdk_threads_enter();
 
 	publicStream = (char *)malloc(1024 * MAXLINE);
-	createClient();
+	createClient(argc, argv);
 	g_timeout_add(100, (GSourceFunc)timer_exe, NULL);
 	gtk_init(&argc, &argv);
 	// gdk_threads_enter();

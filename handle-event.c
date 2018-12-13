@@ -117,13 +117,24 @@ void onLoginButtonClicked(GtkWidget *widget, gpointer gp)
 
 void onChannelButtonClicked(GtkWidget *widget, gpointer data)
 {
+	int i = 0, count ;
+	char name[50];
 	currentChannel = (char *)data;
 	char * x = strchr(currentChannel, BRACKET);
 	if (x != NULL)
 	{
 		*x = '\0'; // Remove message count from user name example: hau(2) => hau
 	}
-	updateUserList(onlineUsers, onlineUserCount);
+	for(i = 0; i< onlineUserCount; i++){
+		puts(onlineUsers[i]);
+        sscanf(onlineUsers[i], "%[^(](%d", name, &count);
+        if (strcmp(name, currentChannel) == 0)
+        {
+        	puts(onlineUsers[i]);
+            strcpy(onlineUsers[i], currentChannel);
+            break;
+        }
+    }
 	if (strcmp(currentChannel, PUBLIC) == 0)
 	{
 		printf("setButtonFocus\n");
@@ -133,9 +144,11 @@ void onChannelButtonClicked(GtkWidget *widget, gpointer data)
 		int id = findUserMessageStream(currentChannel);
 		if (id != -1)
 		{
+			onlineUsersStream[id].newMessage = 0;
 			textViewSetText(chatArea, onlineUsersStream[id].stream);
 		}
 	}
+	updateUserList(onlineUsers, onlineUserCount);
 	// showMessage(window, GTK_MESSAGE_INFO, "haha", currentChannel);
 }
 

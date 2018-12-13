@@ -97,6 +97,7 @@ void initLoginDialog()
 	g_signal_connect(cancelButton, "clicked", G_CALLBACK(onExit), loginDialog);
 	g_signal_connect(inputUsername, "activate", G_CALLBACK(onLoginButtonClicked), data_array);
 	g_signal_connect(inputPassword, "activate", G_CALLBACK(onLoginButtonClicked), data_array);
+	g_signal_connect(loginDialog, "destroy", G_CALLBACK(onExit), NULL); //Ket thuc chuong trinh khi dong cua so chinh
 	// gtk_widget_show_all(loginDialog);
 	// gtk_dialog_run(GTK_DIALOG(loginDialog));
 	// gtk_widget_destroy(loginDialog);
@@ -326,7 +327,7 @@ void initMainWindow()
 	initUserList(5, 154, onlineUsers, 7);
 	initMessageInput(120, 280);
 
-	g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL); //Ket thuc chuong trinh khi dong cua so chinh
+	g_signal_connect(window, "destroy", G_CALLBACK(onExit), NULL); //Ket thuc chuong trinh khi dong cua so chinh
 }
 
 void showMainWindow()

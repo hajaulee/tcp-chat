@@ -162,17 +162,18 @@ int notifyMessageCount(char * sender){
     char name[32];
         
     for(i = 0; i< onlineUserCount; i++){
-        sscanf(onlineUsers[i], "%[^(](%d", name, &count);{
-            if (strcmp(name, sender) == 0)
+        count = 0;
+        sscanf(onlineUsers[i], "%[^(](%d", name, &count);
+        if (strcmp(name, sender) == 0)
+        {
+            sprintf(onlineUsers[i], "%s(%d)", name, count+1);
+            puts(onlineUsers[i]);
+            int id = findUserMessageStream(name);
+            if (id != -1)
             {
-                sprintf(onlineUsers[i], "%s(%d)", name, count+1);
-                int id = findUserMessageStream(name);
-                if (id != -1)
-                {
-                    onlineUsersStream[i].newMessage = count+1;
-                }
-                break;
+                onlineUsersStream[i].newMessage = count+1;
             }
+            break;
         }
     }
     updateUserList(onlineUsers, onlineUserCount);
@@ -321,7 +322,7 @@ void signal_SIGABRT(int signal)
 {
     printf("SIGABRT\n");
 }
-int createClient()
+int createClient(int argc, char *argv[])
 {
 
     inBuf = (char *)malloc(MAXLINE * sizeof(char));
@@ -331,7 +332,7 @@ int createClient()
 
     server_socket.sin_family = AF_INET;
     server_socket.sin_port = htons(SERV_PORT);
-    server_socket.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server_socket.sin_addr.s_addr = inet_addr(argc > 1?argv[1]:"127.0.0.1");
     printf("server IP = %s ", inet_ntoa(server_socket.sin_addr));
 
     if (connect(client_sock_fd, (struct sockaddr *)&server_socket, sizeof(server_socket)) < 0){
